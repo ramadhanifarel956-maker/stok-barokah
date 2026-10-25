@@ -6,6 +6,150 @@
   <title>Sistem Stok & Harga - UD. BAROKAH JAYA MAKMUR</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+  
+  <!-- Firebase SDK (Modular CDN) -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-app.js";
+    import { getDatabase, ref, set, onValue, push, remove } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-database.js";
+
+    // Konfigurasi Firebase Milikmu
+    const firebaseConfig = {
+      apiKey: "AIzaSyAo7sjnRiwg7Yr1pJa38tEQVNHJhzYMqZ0",
+      authDomain: "stok-barokah.firebaseapp.com",
+      databaseURL: "https://stok-barokah-default-rtdb.firebaseio.com",
+      projectId: "stok-barokah",
+      storageBucket: "stok-barokah.firebasestorage.app",
+      messagingSenderId: "712505680991",
+      appId: "1:712505680991:web:73bb75b9122e9c02c067ea",
+      measurementId: "G-F0MPCNWDCC"
+    };
+
+    // Inisialisasi Firebase & Realtime Database
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+
+    // Referensi Database
+    const itemsRef = ref(db, 'items');
+    const historyRef = ref(db, 'history');
+
+    // Variable Global State
+    window.items = [];
+    window.historyLog = [];
+    window.selectedCategory = 'All';
+
+    // Format Rupiah
+    window.formatRupiah = function(number) {
+      return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(number);
+    };
+
+    // Sinkronisasi Realtime Data Barang dari Firebase
+    onValue(itemsRef, (snapshot) => {
+      const data = snapshot.val();
+      window.items = [];
+      if (data) {
+        Object.keys(data).forEach(key => {
+          window.items.push({ id: key, ...data[key] });
+        });
+      }
+      renderItems();
+      updateStats();
+    });
+
+    // Sinkronisasi Realtime Riwayat dari Firebase
+    onValue(historyRef, (snapshot) => {
+      const data = snapshot.val();
+      window.historyLog = [];
+      if (data) {
+        Object.keys(data).forEach(key => {
+          window.historyLog.unshift({ id: key, ...data[key] });
+        });
+      }
+      renderHistory();
+    });
+
+    // Tambah Barang Baru ke Firebase
+    window.handleAddItem = function(e) {
+      e.preventDefault();
+      const name = document.getElementById('newItemName').value;
+      const category = document.getElementById('newItemCategory').value;
+      const price = parseInt(document.getElementById('newItemPrice').value);
+      const stock = parseInt(document.getElementById('newItemStock').value);
+      const unit = document.getElementById('newItemUnit').value;
+
+      const newItemRef = push(ref(db, 'items'));
+      set(newItemRef, { name, category, price, stock, unit })
+        .then(() => {
+          closeAddModal();
+        })
+        .catch(err => alert("Gagal menyimpan data: " + err.message));
+    };
+
+    // Ubah Stok Barang (Custom Input)
+    window.changeStockCustom = function(id, type) {
+      const item = window.items.find(i => i.id === id);
+      if (!item) return;
+
+      const titleText = type === 'in' ? `Tambah Stok ${item.name}` : `Kurangi Stok ${item.name}`;
+      const inputVal = prompt(`${titleText}\nMasukkan jumlah (${item.unit}):`, "1");
+
+      if (inputVal === null) return;
+      
+      const qty = parseInt(inputVal);
+      if (isNaN(qty) || qty <= 0) {
+        alert("Harap masukkan angka jumlah yang valid!");
+        return;
+      }
+
+      let newStock = item.stock;
+      if (type === 'out') {
+        if (item.stock - qty < 0) {
+          alert(`Stok tidak cukup! Stok saat ini hanya tersisa ${item.stock} ${item.unit}.`);
+          return;
+        }
+        newStock -= qty;
+      } else {
+        newStock += qty;
+      }
+
+      // Update Stok ke Firebase
+      set(ref(db, `items/${id}/stock`), newStock);
+
+      // Catat Riwayat ke Firebase
+      const now = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+      const actionText = type === 'in' ? `+${qty} ${item.unit} (Stok Masuk)` : `-${qty} ${item.unit} (Terjual/Keluar)`;
+      
+      push(ref(db, 'history'), {
+        time: now,
+        text: `<b>${item.name}</b>: ${actionText}`,
+        type: type
+      });
+    };
+
+    // Edit Harga Barang
+    window.editPrice = function(id) {
+      const item = window.items.find(i => i.id === id);
+      if (!item) return;
+
+      const newPrice = prompt(`Masukkan harga baru untuk ${item.name} (per ${item.unit}):`, item.price);
+      if (newPrice !== null && !isNaN(newPrice) && newPrice !== "") {
+        set(ref(db, `items/${id}/price`), parseInt(newPrice));
+      }
+    };
+
+    // Hapus Barang
+    window.deleteItem = function(id) {
+      if (confirm('Yakin ingin menghapus barang ini secara permanen dari Cloud Database?')) {
+        remove(ref(db, `items/${id}`));
+      }
+    };
+
+    // Hapus Log Riwayat
+    window.clearHistory = function() {
+      if (confirm('Hapus semua catatan riwayat dari Cloud Database?')) {
+        remove(ref(db, 'history'));
+      }
+    };
+  </script>
 </head>
 <body class="bg-slate-100 font-sans min-h-screen pb-12">
 
@@ -15,7 +159,7 @@
       <div>
         <h1 class="font-black text-lg tracking-wide uppercase leading-tight">UD. BAROKAH JAYA MAKMUR</h1>
         <p class="text-xs text-amber-100 flex items-center gap-1 mt-0.5">
-          <i class="fa-solid fa-boxes-stacked"></i> Stok & Harga Barang
+          <i class="fa-solid fa-cloud"></i> Cloud Stok & Harga (Firebase)
         </p>
       </div>
       <button onclick="openAddModal()" class="bg-amber-800 hover:bg-amber-900 text-white text-xs px-3 py-2 rounded-lg font-medium flex items-center gap-1.5 shadow">
@@ -120,32 +264,16 @@
   </div>
 
   <script>
-    let items = JSON.parse(localStorage.getItem('barokah_items_v3')) || [];
-    let history = JSON.parse(localStorage.getItem('barokah_history_v3')) || [];
-    let selectedCategory = 'All';
-
-    function formatRupiah(number) {
-      return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(number);
-    }
-
-    function saveState() {
-      localStorage.setItem('barokah_items_v3', JSON.stringify(items));
-      localStorage.setItem('barokah_history_v3', JSON.stringify(history));
-      renderItems();
-      renderHistory();
-      updateStats();
-    }
-
     function updateStats() {
-      document.getElementById('statTotalItem').innerText = items.length;
-      document.getElementById('statLowStock').innerText = items.filter(i => i.stock <= 5).length;
+      document.getElementById('statTotalItem').innerText = window.items.length;
+      document.getElementById('statLowStock').innerText = window.items.filter(i => i.stock <= 5).length;
       
-      const totalVal = items.reduce((sum, item) => sum + (item.price * item.stock), 0);
+      const totalVal = window.items.reduce((sum, item) => sum + (item.price * item.stock), 0);
       document.getElementById('statTotalValue').innerText = formatRupiah(totalVal);
     }
 
     function filterCategory(cat) {
-      selectedCategory = cat;
+      window.selectedCategory = cat;
       document.querySelectorAll('.cat-btn').forEach(btn => {
         if(btn.innerText.includes(cat) || (cat==='All' && btn.innerText==='Semua')) {
           btn.className = "cat-btn bg-amber-600 text-white px-3 py-1.5 rounded-full font-medium whitespace-nowrap";
@@ -161,8 +289,8 @@
       const listEl = document.getElementById('itemList');
       listEl.innerHTML = '';
 
-      const filtered = items.filter(item => {
-        const matchCat = selectedCategory === 'All' || item.category === selectedCategory;
+      const filtered = window.items.filter(item => {
+        const matchCat = window.selectedCategory === 'All' || item.category === window.selectedCategory;
         const matchQuery = item.name.toLowerCase().includes(query);
         return matchCat && matchQuery;
       });
@@ -170,9 +298,9 @@
       if (filtered.length === 0) {
         listEl.innerHTML = `
           <div class="text-center py-10 bg-white rounded-xl border border-dashed border-slate-300 p-4">
-            <i class="fa-solid fa-box-open text-slate-300 text-3xl mb-2"></i>
-            <p class="text-slate-500 text-xs font-medium">Belum ada data barang.</p>
-            <p class="text-slate-400 text-[11px] mt-0.5">Klik "+ Barang Baru" di atas untuk menambah barang.</p>
+            <i class="fa-solid fa-cloud-arrow-up text-slate-300 text-3xl mb-2"></i>
+            <p class="text-slate-500 text-xs font-medium">Belum ada data barang di Cloud Database.</p>
+            <p class="text-slate-400 text-[11px] mt-0.5">Klik "+ Barang Baru" untuk menambah stok pertama.</p>
           </div>`;
         return;
       }
@@ -199,20 +327,20 @@
             <div class="flex items-center gap-1.5 mt-0.5">
               <span class="text-xs font-bold text-amber-600">${formatRupiah(item.price)}</span>
               <span class="text-[11px] text-slate-400">/ ${item.unit}</span>
-              <button onclick="editPrice(${item.id})" class="text-slate-400 hover:text-amber-600 text-[11px] ml-1" title="Ubah Harga">
+              <button onclick="editPrice('${item.id}')" class="text-slate-400 hover:text-amber-600 text-[11px] ml-1" title="Ubah Harga">
                 <i class="fa-solid fa-pen"></i>
               </button>
             </div>
             <p class="text-xs text-slate-500 mt-1">Sisa Stok: <span class="font-bold text-slate-800">${item.stock}</span> ${item.unit}</p>
           </div>
           <div class="flex items-center gap-1">
-            <button onclick="changeStockCustom(${item.id}, 'out')" class="w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 font-bold flex items-center justify-center transition" title="Kurangi Stok">
+            <button onclick="changeStockCustom('${item.id}', 'out')" class="w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 font-bold flex items-center justify-center transition" title="Kurangi Stok">
               <i class="fa-solid fa-minus text-xs"></i>
             </button>
-            <button onclick="changeStockCustom(${item.id}, 'in')" class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-bold flex items-center justify-center transition" title="Tambah Stok">
+            <button onclick="changeStockCustom('${item.id}', 'in')" class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-bold flex items-center justify-center transition" title="Tambah Stok">
               <i class="fa-solid fa-plus text-xs"></i>
             </button>
-            <button onclick="deleteItem(${item.id})" class="w-8 h-8 rounded-lg text-slate-300 hover:text-red-500 flex items-center justify-center transition ml-1" title="Hapus Barang">
+            <button onclick="deleteItem('${item.id}')" class="w-8 h-8 rounded-lg text-slate-300 hover:text-red-500 flex items-center justify-center transition ml-1" title="Hapus Barang">
               <i class="fa-solid fa-trash text-xs"></i>
             </button>
           </div>
@@ -221,83 +349,19 @@
       });
     }
 
-    function changeStockCustom(id, type) {
-      const item = items.find(i => i.id === id);
-      if (!item) return;
-
-      const titleText = type === 'in' ? `Tambah Stok ${item.name}` : `Kurangi Stok ${item.name}`;
-      const inputVal = prompt(`${titleText}\nMasukkan jumlah (${item.unit}):`, "1");
-
-      if (inputVal === null) return; // Jika klik batal
-      
-      const qty = parseInt(inputVal);
-      if (isNaN(qty) || qty <= 0) {
-        alert("Harap masukkan angka jumlah yang valid!");
-        return;
-      }
-
-      if (type === 'out') {
-        if (item.stock - qty < 0) {
-          alert(`Stok tidak cukup! Stok saat ini hanya tersisa ${item.stock} ${item.unit}.`);
-          return;
-        }
-        item.stock -= qty;
-      } else {
-        item.stock += qty;
-      }
-
-      const now = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-      const actionText = type === 'in' ? `+${qty} ${item.unit} (Stok Masuk)` : `-${qty} ${item.unit} (Terjual/Keluar)`;
-      
-      history.unshift({
-        time: now,
-        text: `<b>${item.name}</b>: ${actionText}`,
-        type: type
-      });
-
-      if (history.length > 20) history.pop();
-
-      saveState();
-    }
-
-    function deleteItem(id) {
-      if (confirm('Yakin ingin menghapus barang ini?')) {
-        items = items.filter(i => i.id !== id);
-        saveState();
-      }
-    }
-
-    function editPrice(id) {
-      const item = items.find(i => i.id === id);
-      if (!item) return;
-
-      const newPrice = prompt(`Masukkan harga baru untuk ${item.name} (per ${item.unit}):`, item.price);
-      if (newPrice !== null && !isNaN(newPrice) && newPrice !== "") {
-        item.price = parseInt(newPrice);
-        saveState();
-      }
-    }
-
     function renderHistory() {
       const historyEl = document.getElementById('historyList');
-      if (history.length === 0) {
+      if (window.historyLog.length === 0) {
         historyEl.innerHTML = `<li class="text-slate-400 italic text-center py-2">Belum ada riwayat transaksi.</li>`;
         return;
       }
 
-      historyEl.innerHTML = history.map(h => `
+      historyEl.innerHTML = window.historyLog.map(h => `
         <li class="flex justify-between items-center py-1.5 border-b border-slate-100 last:border-0">
           <span class="text-slate-700">${h.text}</span>
           <span class="text-[10px] text-slate-400 font-mono ml-2">${h.time}</span>
         </li>
       `).join('');
-    }
-
-    function clearHistory() {
-      if(confirm('Hapus semua catatan riwayat?')) {
-        history = [];
-        saveState();
-      }
     }
 
     function openAddModal() {
@@ -308,31 +372,6 @@
       document.getElementById('addModal').classList.add('hidden');
       document.getElementById('addForm').reset();
     }
-
-    function handleAddItem(e) {
-      e.preventDefault();
-      const name = document.getElementById('newItemName').value;
-      const category = document.getElementById('newItemCategory').value;
-      const price = parseInt(document.getElementById('newItemPrice').value);
-      const stock = parseInt(document.getElementById('newItemStock').value);
-      const unit = document.getElementById('newItemUnit').value;
-
-      const newItem = {
-        id: Date.now(),
-        name,
-        category,
-        price,
-        stock,
-        unit
-      };
-
-      items.push(newItem);
-      closeAddModal();
-      saveState();
-    }
-
-    // Initial Load
-    saveState();
   </script>
 </body>
 </html>
