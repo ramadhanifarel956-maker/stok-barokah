@@ -120,7 +120,6 @@
   </div>
 
   <script>
-    // Data diawali kosong tanpa default
     let items = JSON.parse(localStorage.getItem('barokah_items_v3')) || [];
     let history = JSON.parse(localStorage.getItem('barokah_history_v3')) || [];
     let selectedCategory = 'All';
@@ -207,10 +206,10 @@
             <p class="text-xs text-slate-500 mt-1">Sisa Stok: <span class="font-bold text-slate-800">${item.stock}</span> ${item.unit}</p>
           </div>
           <div class="flex items-center gap-1">
-            <button onclick="changeStock(${item.id}, -1)" class="w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 font-bold flex items-center justify-center transition" title="Barang Keluar (-1)">
+            <button onclick="changeStockCustom(${item.id}, 'out')" class="w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 font-bold flex items-center justify-center transition" title="Kurangi Stok">
               <i class="fa-solid fa-minus text-xs"></i>
             </button>
-            <button onclick="changeStock(${item.id}, 1)" class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-bold flex items-center justify-center transition" title="Barang Masuk (+1)">
+            <button onclick="changeStockCustom(${item.id}, 'in')" class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-bold flex items-center justify-center transition" title="Tambah Stok">
               <i class="fa-solid fa-plus text-xs"></i>
             </button>
             <button onclick="deleteItem(${item.id})" class="w-8 h-8 rounded-lg text-slate-300 hover:text-red-500 flex items-center justify-center transition ml-1" title="Hapus Barang">
@@ -220,6 +219,45 @@
         `;
         listEl.appendChild(card);
       });
+    }
+
+    function changeStockCustom(id, type) {
+      const item = items.find(i => i.id === id);
+      if (!item) return;
+
+      const titleText = type === 'in' ? `Tambah Stok ${item.name}` : `Kurangi Stok ${item.name}`;
+      const inputVal = prompt(`${titleText}\nMasukkan jumlah (${item.unit}):`, "1");
+
+      if (inputVal === null) return; // Jika klik batal
+      
+      const qty = parseInt(inputVal);
+      if (isNaN(qty) || qty <= 0) {
+        alert("Harap masukkan angka jumlah yang valid!");
+        return;
+      }
+
+      if (type === 'out') {
+        if (item.stock - qty < 0) {
+          alert(`Stok tidak cukup! Stok saat ini hanya tersisa ${item.stock} ${item.unit}.`);
+          return;
+        }
+        item.stock -= qty;
+      } else {
+        item.stock += qty;
+      }
+
+      const now = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+      const actionText = type === 'in' ? `+${qty} ${item.unit} (Stok Masuk)` : `-${qty} ${item.unit} (Terjual/Keluar)`;
+      
+      history.unshift({
+        time: now,
+        text: `<b>${item.name}</b>: ${actionText}`,
+        type: type
+      });
+
+      if (history.length > 20) history.pop();
+
+      saveState();
     }
 
     function deleteItem(id) {
@@ -238,30 +276,6 @@
         item.price = parseInt(newPrice);
         saveState();
       }
-    }
-
-    function changeStock(id, delta) {
-      const item = items.find(i => i.id === id);
-      if (!item) return;
-
-      if (item.stock + delta < 0) {
-        alert("Stok barang tidak boleh kurang dari 0!");
-        return;
-      }
-
-      item.stock += delta;
-      
-      const now = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
-      const actionText = delta > 0 ? `+${delta} ${item.unit} (Stok Masuk)` : `${delta} ${item.unit} (Terjual/Keluar)`;
-      history.unshift({
-        time: now,
-        text: `<b>${item.name}</b>: ${actionText}`,
-        type: delta > 0 ? 'in' : 'out'
-      });
-
-      if (history.length > 20) history.pop();
-
-      saveState();
     }
 
     function renderHistory() {
