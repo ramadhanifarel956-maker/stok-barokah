@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sistem Stok & Harga - UD. BAROKAH JAYA MAKMUR</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+</head>
+<body class="bg-slate-100 font-sans min-h-screen pb-12">
+
+  <!-- Header Store -->
+  <header class="bg-amber-600 text-white shadow-lg sticky top-0 z-30">
+    <div class="max-w-md mx-auto px-4 py-4 flex items-center justify-between">
+      <div>
+        <h1 class="font-black text-lg tracking-wide uppercase leading-tight">UD. BAROKAH JAYA MAKMUR</h1>
+        <p class="text-xs text-amber-100 flex items-center gap-1 mt-0.5">
+          <i class="fa-solid fa-boxes-stacked"></i> Stok & Harga Barang
+        </p>
+      </div>
+      <button onclick="openAddModal()" class="bg-amber-800 hover:bg-amber-900 text-white text-xs px-3 py-2 rounded-lg font-medium flex items-center gap-1.5 shadow">
+        <i class="fa-solid fa-plus"></i> Barang Baru
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="max-w-md mx-auto px-4 mt-4 space-y-4">
+
+    <!-- Ringkasan Statistik -->
+    <div class="grid grid-cols-2 gap-2">
+      <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 text-center">
+        <span class="text-xs text-slate-500 block">Total Jenis Barang</span>
+        <span id="statTotalItem" class="text-lg font-bold text-slate-800">0</span>
+      </div>
+      <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 text-center">
+        <span class="text-xs text-slate-500 block">Stok Menipis</span>
+        <span id="statLowStock" class="text-lg font-bold text-red-600">0</span>
+      </div>
+    </div>
+    <div class="bg-amber-50 p-3 rounded-xl border border-amber-200 flex justify-between items-center">
+      <div>
+        <span class="text-xs text-amber-800 font-medium block">Total Estimasi Nilai Stok</span>
+        <span id="statTotalValue" class="text-base font-black text-amber-900">Rp 0</span>
+      </div>
+      <i class="fa-solid fa-wallet text-amber-600 text-xl"></i>
+    </div>
+
+    <!-- Filter & Search -->
+    <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 space-y-2">
+      <div class="relative">
+        <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-sm"></i>
+        <input type="text" id="searchInput" oninput="renderItems()" placeholder="Cari material (Seng, Holo, Besi)..." 
+               class="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500">
+      </div>
+      <div class="flex gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
+        <button onclick="filterCategory('All')" class="cat-btn bg-amber-600 text-white px-3 py-1.5 rounded-full font-medium whitespace-nowrap">Semua</button>
+        <button onclick="filterCategory('Material')" class="cat-btn bg-slate-100 text-slate-600 px-3 py-1.5 rounded-full font-medium whitespace-nowrap">Material / Besi</button>
+        <button onclick="filterCategory('Elektronik')" class="cat-btn bg-slate-100 text-slate-600 px-3 py-1.5 rounded-full font-medium whitespace-nowrap">Elektronik</button>
+      </div>
+    </div>
+
+    <!-- Daftar Stok Barang -->
+    <div id="itemList" class="space-y-3">
+      <!-- Item Card Render In JS -->
+    </div>
+
+    <!-- Riwayat Transaksi -->
+    <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-200 mt-6">
+      <h3 class="font-bold text-slate-800 text-sm mb-3 flex items-center justify-between">
+        <span><i class="fa-solid fa-clock-rotate-left text-amber-600 mr-1.5"></i> Riwayat Transaksi</span>
+        <button onclick="clearHistory()" class="text-xs text-red-500 hover:underline">Hapus Log</button>
+      </h3>
+      <ul id="historyList" class="space-y-2 text-xs max-h-48 overflow-y-auto pr-1">
+        <li class="text-slate-400 italic text-center py-2">Belum ada riwayat transaksi.</li>
+      </ul>
+    </div>
+
+  </main>
+
+  <!-- Modal Tambah Barang Baru -->
+  <div id="addModal" class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-white w-full max-w-sm rounded-2xl p-5 shadow-xl space-y-4">
+      <div class="flex justify-between items-center border-b pb-2">
+        <h3 class="font-bold text-slate-800">Tambah Barang Baru</h3>
+        <button onclick="closeAddModal()" class="text-slate-400 hover:text-slate-600"><i class="fa-solid fa-xmark text-lg"></i></button>
+      </div>
+      <form id="addForm" onsubmit="handleAddItem(event)" class="space-y-3 text-xs">
+        <div>
+          <label class="block text-slate-600 font-medium mb-1">Nama Barang / Material</label>
+          <input type="text" id="newItemName" required placeholder="Contoh: Besi Siku Bekas" class="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-amber-500">
+        </div>
+        <div>
+          <label class="block text-slate-600 font-medium mb-1">Kategori</label>
+          <select id="newItemCategory" class="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-amber-500 bg-white">
+            <option value="Material">Material / Besi</option>
+            <option value="Elektronik">Elektronik</option>
+          </select>
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+          <div>
+            <label class="block text-slate-600 font-medium mb-1">Harga (Rp)</label>
+            <input type="number" id="newItemPrice" min="0" required placeholder="0" class="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-amber-500">
+          </div>
+          <div>
+            <label class="block text-slate-600 font-medium mb-1">Satuan</label>
+            <input type="text" id="newItemUnit" required placeholder="Kg / Batang / Lembar" class="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-amber-500">
+          </div>
+        </div>
+        <div>
+          <label class="block text-slate-600 font-medium mb-1">Stok Awal</label>
+          <input type="number" id="newItemStock" min="0" required placeholder="0" class="w-full p-2.5 border rounded-lg focus:ring-2 focus:ring-amber-500">
+        </div>
+        <div class="flex gap-2 pt-2">
+          <button type="button" onclick="closeAddModal()" class="w-1/2 py-2.5 bg-slate-100 text-slate-600 rounded-lg font-medium">Batal</button>
+          <button type="submit" class="w-1/2 py-2.5 bg-amber-600 text-white rounded-lg font-medium shadow hover:bg-amber-700">Simpan Barang</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    // Data bawaan dengan default harga
+    const defaultData = [
+      { id: 1, name: "Seng Baru", category: "Material", price: 65000, stock: 25, unit: "Lembar" },
+      { id: 2, name: "Seng Bekas", category: "Material", price: 35000, stock: 12, unit: "Lembar" },
+      { id: 3, name: "Holo Baru", category: "Material", price: 45000, stock: 30, unit: "Batang" },
+      { id: 4, name: "Holo Bekas", category: "Material", price: 25000, stock: 8, unit: "Batang" },
+      { id: 5, name: "Besi Pipa Bekas", category: "Material", price: 12000, stock: 15, unit: "Kg" },
+      { id: 6, name: "Besi Siku Bekas", category: "Material", price: 11000, stock: 20, unit: "Kg" },
+      { id: 7, name: "Baja Ringan Baru", category: "Material", price: 55000, stock: 40, unit: "Batang" },
+      { id: 8, name: "Baja Ringan Bekas", category: "Material", price: 30000, stock: 5, unit: "Batang" },
+      { id: 9, name: "Paralon", category: "Material", price: 35000, stock: 18, unit: "Batang" },
+      { id: 10, name: "Kulkas (Bekas/Second)", category: "Elektronik", price: 750000, stock: 3, unit: "Unit" },
+      { id: 11, name: "Mesin Cuci (Bekas/Second)", category: "Elektronik", price: 600000, stock: 2, unit: "Unit" }
+    ];
+
+    let items = JSON.parse(localStorage.getItem('barokah_items_v2')) || defaultData;
+    let history = JSON.parse(localStorage.getItem('barokah_history_v2')) || [];
+    let selectedCategory = 'All';
+
+    function formatRupiah(number) {
+      return new Intl.NumberFormat('id-ID', { style: 'currency', currency: 'IDR', maximumFractionDigits: 0 }).format(number);
+    }
+
+    function saveState() {
+      localStorage.setItem('barokah_items_v2', JSON.stringify(items));
+      localStorage.setItem('barokah_history_v2', JSON.stringify(history));
+      renderItems();
+      renderHistory();
+      updateStats();
+    }
+
+    function updateStats() {
+      document.getElementById('statTotalItem').innerText = items.length;
+      document.getElementById('statLowStock').innerText = items.filter(i => i.stock <= 5).length;
+      
+      const totalVal = items.reduce((sum, item) => sum + (item.price * item.stock), 0);
+      document.getElementById('statTotalValue').innerText = formatRupiah(totalVal);
+    }
+
+    function filterCategory(cat) {
+      selectedCategory = cat;
+      document.querySelectorAll('.cat-btn').forEach(btn => {
+        if(btn.innerText.includes(cat) || (cat==='All' && btn.innerText==='Semua')) {
+          btn.className = "cat-btn bg-amber-600 text-white px-3 py-1.5 rounded-full font-medium whitespace-nowrap";
+        } else {
+          btn.className = "cat-btn bg-slate-100 text-slate-600 px-3 py-1.5 rounded-full font-medium whitespace-nowrap";
+        }
+      });
+      renderItems();
+    }
+
+    function renderItems() {
+      const query = document.getElementById('searchInput').value.toLowerCase();
+      const listEl = document.getElementById('itemList');
+      listEl.innerHTML = '';
+
+      const filtered = items.filter(item => {
+        const matchCat = selectedCategory === 'All' || item.category === selectedCategory;
+        const matchQuery = item.name.toLowerCase().includes(query);
+        return matchCat && matchQuery;
+      });
+
+      if (filtered.length === 0) {
+        listEl.innerHTML = `<div class="text-center py-8 text-slate-400 text-xs">Barang tidak ditemukan.</div>`;
+        return;
+      }
+
+      filtered.forEach(item => {
+        let statusBadge = '';
+        if (item.stock === 0) {
+          statusBadge = `<span class="bg-red-100 text-red-700 text-[10px] px-2 py-0.5 rounded font-semibold">Habis</span>`;
+        } else if (item.stock <= 5) {
+          statusBadge = `<span class="bg-amber-100 text-amber-700 text-[10px] px-2 py-0.5 rounded font-semibold">Stok Menipis</span>`;
+        } else {
+          statusBadge = `<span class="bg-emerald-100 text-emerald-700 text-[10px] px-2 py-0.5 rounded font-semibold">Aman</span>`;
+        }
+
+        const card = document.createElement('div');
+        card.className = "bg-white p-3.5 rounded-xl shadow-sm border border-slate-200 flex items-center justify-between gap-3";
+        card.innerHTML = `
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="text-[10px] text-slate-400 font-medium uppercase tracking-wider">${item.category}</span>
+              ${statusBadge}
+            </div>
+            <h4 class="font-bold text-slate-800 text-sm truncate">${item.name}</h4>
+            <div class="flex items-center gap-1.5 mt-0.5">
+              <span class="text-xs font-bold text-amber-600">${formatRupiah(item.price)}</span>
+              <span class="text-[11px] text-slate-400">/ ${item.unit}</span>
+              <button onclick="editPrice(${item.id})" class="text-slate-400 hover:text-amber-600 text-[11px] ml-1" title="Ubah Harga">
+                <i class="fa-solid fa-pen"></i>
+              </button>
+            </div>
+            <p class="text-xs text-slate-500 mt-1">Sisa Stok: <span class="font-bold text-slate-800">${item.stock}</span> ${item.unit}</p>
+          </div>
+          <div class="flex items-center gap-1">
+            <button onclick="changeStock(${item.id}, -1)" class="w-8 h-8 rounded-lg bg-red-50 text-red-600 hover:bg-red-100 font-bold flex items-center justify-center transition" title="Barang Keluar (-1)">
+              <i class="fa-solid fa-minus text-xs"></i>
+            </button>
+            <button onclick="changeStock(${item.id}, 1)" class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-bold flex items-center justify-center transition" title="Barang Masuk (+1)">
+              <i class="fa-solid fa-plus text-xs"></i>
+            </button>
+          </div>
+        `;
+        listEl.appendChild(card);
+      });
+    }
+
+    function editPrice(id) {
+      const item = items.find(i => i.id === id);
+      if (!item) return;
+
+      const newPrice = prompt(`Masukkan harga baru untuk ${item.name} (per ${item.unit}):`, item.price);
+      if (newPrice !== null && !isNaN(newPrice) && newPrice !== "") {
+        item.price = parseInt(newPrice);
+        saveState();
+      }
+    }
+
+    function changeStock(id, delta) {
+      const item = items.find(i => i.id === id);
+      if (!item) return;
+
+      if (item.stock + delta < 0) {
+        alert("Stok barang tidak boleh kurang dari 0!");
+        return;
+      }
+
+      item.stock += delta;
+      
+      const now = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+      const actionText = delta > 0 ? `+${delta} ${item.unit} (Stok Masuk)` : `${delta} ${item.unit} (Terjual/Keluar)`;
+      history.unshift({
+        time: now,
+        text: `<b>${item.name}</b>: ${actionText}`,
+        type: delta > 0 ? 'in' : 'out'
+      });
+
+      if (history.length > 20) history.pop();
+
+      saveState();
+    }
+
+    function renderHistory() {
+      const historyEl = document.getElementById('historyList');
+      if (history.length === 0) {
+        historyEl.innerHTML = `<li class="text-slate-400 italic text-center py-2">Belum ada riwayat transaksi.</li>`;
+        return;
+      }
+
+      historyEl.innerHTML = history.map(h => `
+        <li class="flex justify-between items-center py-1.5 border-b border-slate-100 last:border-0">
+          <span class="text-slate-700">${h.text}</span>
+          <span class="text-[10px] text-slate-400 font-mono ml-2">${h.time}</span>
+        </li>
+      `).join('');
+    }
+
+    function clearHistory() {
+      if(confirm('Hapus semua catatan riwayat?')) {
+        history = [];
+        saveState();
+      }
+    }
+
+    function openAddModal() {
+      document.getElementById('addModal').classList.remove('hidden');
+    }
+
+    function closeAddModal() {
+      document.getElementById('addModal').classList.add('hidden');
+      document.getElementById('addForm').reset();
+    }
+
+    function handleAddItem(e) {
+      e.preventDefault();
+      const name = document.getElementById('newItemName').value;
+      const category = document.getElementById('newItemCategory').value;
+      const price = parseInt(document.getElementById('newItemPrice').value);
+      const stock = parseInt(document.getElementById('newItemStock').value);
+      const unit = document.getElementById('newItemUnit').value;
+
+      const newItem = {
+        id: Date.now(),
+        name,
+        category,
+        price,
+        stock,
+        unit
+      };
+
+      items.push(newItem);
+      closeAddModal();
+      saveState();
+    }
+
+    // Initial Load
+    saveState();
+  </script>
+</body>
+</html>
