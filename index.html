@@ -50,7 +50,7 @@
     <div class="bg-white p-3 rounded-xl shadow-sm border border-slate-200 space-y-2">
       <div class="relative">
         <i class="fa-solid fa-magnifying-glass absolute left-3 top-3 text-slate-400 text-sm"></i>
-        <input type="text" id="searchInput" oninput="renderItems()" placeholder="Cari material (Seng, Holo, Besi)..." 
+        <input type="text" id="searchInput" oninput="renderItems()" placeholder="Cari material..." 
                class="w-full pl-9 pr-3 py-2 text-sm bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-amber-500">
       </div>
       <div class="flex gap-1.5 overflow-x-auto pb-1 text-xs no-scrollbar">
@@ -120,23 +120,9 @@
   </div>
 
   <script>
-    // Data bawaan dengan default harga
-    const defaultData = [
-      { id: 1, name: "Seng Baru", category: "Material", price: 65000, stock: 25, unit: "Lembar" },
-      { id: 2, name: "Seng Bekas", category: "Material", price: 35000, stock: 12, unit: "Lembar" },
-      { id: 3, name: "Holo Baru", category: "Material", price: 45000, stock: 30, unit: "Batang" },
-      { id: 4, name: "Holo Bekas", category: "Material", price: 25000, stock: 8, unit: "Batang" },
-      { id: 5, name: "Besi Pipa Bekas", category: "Material", price: 12000, stock: 15, unit: "Kg" },
-      { id: 6, name: "Besi Siku Bekas", category: "Material", price: 11000, stock: 20, unit: "Kg" },
-      { id: 7, name: "Baja Ringan Baru", category: "Material", price: 55000, stock: 40, unit: "Batang" },
-      { id: 8, name: "Baja Ringan Bekas", category: "Material", price: 30000, stock: 5, unit: "Batang" },
-      { id: 9, name: "Paralon", category: "Material", price: 35000, stock: 18, unit: "Batang" },
-      { id: 10, name: "Kulkas (Bekas/Second)", category: "Elektronik", price: 750000, stock: 3, unit: "Unit" },
-      { id: 11, name: "Mesin Cuci (Bekas/Second)", category: "Elektronik", price: 600000, stock: 2, unit: "Unit" }
-    ];
-
-    let items = JSON.parse(localStorage.getItem('barokah_items_v2')) || defaultData;
-    let history = JSON.parse(localStorage.getItem('barokah_history_v2')) || [];
+    // Data diawali kosong tanpa default
+    let items = JSON.parse(localStorage.getItem('barokah_items_v3')) || [];
+    let history = JSON.parse(localStorage.getItem('barokah_history_v3')) || [];
     let selectedCategory = 'All';
 
     function formatRupiah(number) {
@@ -144,8 +130,8 @@
     }
 
     function saveState() {
-      localStorage.setItem('barokah_items_v2', JSON.stringify(items));
-      localStorage.setItem('barokah_history_v2', JSON.stringify(history));
+      localStorage.setItem('barokah_items_v3', JSON.stringify(items));
+      localStorage.setItem('barokah_history_v3', JSON.stringify(history));
       renderItems();
       renderHistory();
       updateStats();
@@ -183,7 +169,12 @@
       });
 
       if (filtered.length === 0) {
-        listEl.innerHTML = `<div class="text-center py-8 text-slate-400 text-xs">Barang tidak ditemukan.</div>`;
+        listEl.innerHTML = `
+          <div class="text-center py-10 bg-white rounded-xl border border-dashed border-slate-300 p-4">
+            <i class="fa-solid fa-box-open text-slate-300 text-3xl mb-2"></i>
+            <p class="text-slate-500 text-xs font-medium">Belum ada data barang.</p>
+            <p class="text-slate-400 text-[11px] mt-0.5">Klik "+ Barang Baru" di atas untuk menambah barang.</p>
+          </div>`;
         return;
       }
 
@@ -222,10 +213,20 @@
             <button onclick="changeStock(${item.id}, 1)" class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 hover:bg-emerald-100 font-bold flex items-center justify-center transition" title="Barang Masuk (+1)">
               <i class="fa-solid fa-plus text-xs"></i>
             </button>
+            <button onclick="deleteItem(${item.id})" class="w-8 h-8 rounded-lg text-slate-300 hover:text-red-500 flex items-center justify-center transition ml-1" title="Hapus Barang">
+              <i class="fa-solid fa-trash text-xs"></i>
+            </button>
           </div>
         `;
         listEl.appendChild(card);
       });
+    }
+
+    function deleteItem(id) {
+      if (confirm('Yakin ingin menghapus barang ini?')) {
+        items = items.filter(i => i.id !== id);
+        saveState();
+      }
     }
 
     function editPrice(id) {
